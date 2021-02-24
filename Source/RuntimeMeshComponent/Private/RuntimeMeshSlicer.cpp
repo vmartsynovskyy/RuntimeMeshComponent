@@ -59,7 +59,14 @@ int32 CopyVertexToNewMeshData(const FRuntimeMeshRenderableMeshData& Source, FRun
 
 	Destination.Colors.Add(Source.Colors.Num() > Index ? Source.Colors.GetColor(Index) : FColor::White);
 
-	Destination.TexCoords.Add(Source.TexCoords.Num() > Index ? Source.TexCoords.GetTexCoord(Index) : FVector2D(0, 0));
+	int32 NumTexCoords = Source.TexCoords.NumChannels();
+	if (NumTexCoords > 0)
+	{
+		for (int32 TexIndex = 0; TexIndex < NumTexCoords; TexIndex++)
+		{
+			Destination.TexCoords.Add(Source.TexCoords.GetTexCoord(Index, TexIndex), TexIndex);
+		}
+	}
 
 	return NewIndex;
 }
@@ -128,13 +135,27 @@ int32 AddInterpolatedVert(FRuntimeMeshRenderableMeshData& Source, FRuntimeMeshRe
 
 	if (Source.TexCoords.Num() > MaxVertex)
 	{
-		FVector2D LeftTexCoord = Source.TexCoords.GetTexCoord(Vertex0);
-		FVector2D RightTexCoord = Source.TexCoords.GetTexCoord(Vertex1);
-		Destination.TexCoords.Add(FMath::Lerp(LeftTexCoord, RightTexCoord, Alpha));
+		int32 NumTexCoords = Source.TexCoords.NumChannels();
+		if (NumTexCoords > 0)
+		{
+			for (int32 TexIndex = 0; TexIndex < NumTexCoords; TexIndex++)
+			{
+				FVector2D LeftTexCoord = Source.TexCoords.GetTexCoord(Vertex0, TexIndex);
+				FVector2D RightTexCoord = Source.TexCoords.GetTexCoord(Vertex1, TexIndex);
+				Destination.TexCoords.Add(FMath::Lerp(LeftTexCoord, RightTexCoord, Alpha), TexIndex);
+			}
+		}
 	}
 	else
 	{
-		Destination.TexCoords.Add(Source.TexCoords.Num() > 0 ? Source.TexCoords.GetTexCoord(0) : FVector2D::ZeroVector);
+		int32 NumTexCoords = Source.TexCoords.NumChannels();
+		if (NumTexCoords > 0)
+		{
+			for (int32 TexIndex = 0; TexIndex < NumTexCoords; TexIndex++)
+			{
+				Destination.TexCoords.Add(Source.TexCoords.Num() > 0 ? Source.TexCoords.GetTexCoord(0, TexIndex) : FVector2D::ZeroVector, TexIndex);
+			}
+		}
 	}
 
 	return NewIndex;
@@ -154,7 +175,9 @@ void Transform2DPolygonTo3D(const FUtilPoly2D& InPoly, const FMatrix& InMatrix, 
 		OutMeshData.Positions.Add(InMatrix.TransformPosition(FVector(InVertex.Pos.X, InVertex.Pos.Y, 0.f)));
 		OutMeshData.Tangents.Add(TangentX, TangentY, TangentZ);
 		OutMeshData.Colors.Add(InVertex.Color);
-		OutMeshData.TexCoords.Add(InVertex.UV);
+		for (int32 TexIndex = 0; TexIndex < OutMeshData.TexCoords.NumChannels(); TexIndex++) {
+			OutMeshData.TexCoords.Add(InVertex.UV, TexIndex);
+		}
 	}
 }
 
@@ -781,7 +804,10 @@ void URuntimeMeshSlicer::SliceRuntimeMesh(URuntimeMeshComponent* InRuntimeMesh, 
 
 				NewDestiantionCap.Colors.Add(NewSourceCap.Colors.GetColor(VertIdx));
 
-				NewDestiantionCap.TexCoords.Add(NewSourceCap.TexCoords.GetTexCoord(VertIdx));
+				for (int32 TexIndex = 0; TexIndex < NewSourceCap.TexCoords.NumChannels(); TexIndex++)
+				{
+					NewDestiantionCap.TexCoords.Add(NewSourceCap.TexCoords.GetTexCoord(VertIdx, TexIndex), TexIndex);
+				}
 			}
 
 			// Find offset between main cap verts and other cap verts
